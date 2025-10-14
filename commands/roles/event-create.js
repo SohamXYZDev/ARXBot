@@ -4,14 +4,11 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('event-create')
 		.setDescription('Create an event with reaction-based attendance')
+		// Required options first
 		.addStringOption(option =>
 			option.setName('title')
 				.setDescription('The title of the event')
 				.setRequired(true))
-		.addStringOption(option =>
-			option.setName('description')
-				.setDescription('Event description')
-				.setRequired(false))
 		.addStringOption(option =>
 			option.setName('start-time')
 				.setDescription('Start time (HH:MM format, e.g., 20:00)')
@@ -24,6 +21,11 @@ module.exports = {
 			option.setName('start-date')
 				.setDescription('Start date (DD/MM/YYYY format, e.g., 13/10/2025)')
 				.setRequired(true))
+		// Optional options after required ones
+		.addStringOption(option =>
+			option.setName('description')
+				.setDescription('Event description')
+				.setRequired(false))
 		.addStringOption(option =>
 			option.setName('end-date')
 				.setDescription('End date (DD/MM/YYYY format, e.g., 13/10/2025)')
