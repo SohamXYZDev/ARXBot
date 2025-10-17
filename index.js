@@ -109,7 +109,125 @@ client.on(Events.InteractionCreate, async interaction => {
 				await interaction.reply({ content: 'Error deleting event!', ephemeral: true });
 			}
 		} else if (customId.startsWith('event_edit_')) {
-			await interaction.reply({ content: 'Event editing is not yet implemented. Please create a new event.', ephemeral: true });
+			const eventKey = `event_${interaction.guild.id}_${interaction.message.id}`;
+			
+			if (!client.eventData || !client.eventData.has(eventKey)) {
+				return await interaction.reply({ content: 'Event data not found!', ephemeral: true });
+			}
+
+			const eventData = client.eventData.get(eventKey);
+			
+			// Create modal for editing
+			const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+			
+			const modal = new ModalBuilder()
+				.setCustomId(`event_edit_modal_${interaction.message.id}`)
+				.setTitle('Edit Event');
+
+			const titleInput = new TextInputBuilder()
+				.setCustomId('title')
+				.setLabel('Event Title')
+				.setStyle(TextInputStyle.Short)
+				.setValue(eventData.title)
+				.setRequired(true);
+
+			const descriptionInput = new TextInputBuilder()
+				.setCustomId('description')
+				.setLabel('Description')
+				.setStyle(TextInputStyle.Paragraph)
+				.setValue(eventData.description || '')
+				.setRequired(false);
+
+			const startTimeInput = new TextInputBuilder()
+				.setCustomId('startTime')
+				.setLabel('Start Time (HH:MM)')
+				.setStyle(TextInputStyle.Short)
+				.setValue(eventData.startTime)
+				.setRequired(true);
+
+			const endTimeInput = new TextInputBuilder()
+				.setCustomId('endTime')
+				.setLabel('End Time (HH:MM)')
+				.setStyle(TextInputStyle.Short)
+				.setValue(eventData.endTime)
+				.setRequired(true);
+
+			const startDateInput = new TextInputBuilder()
+				.setCustomId('startDate')
+				.setLabel('Start Date (DD/MM/YYYY)')
+				.setStyle(TextInputStyle.Short)
+				.setValue(eventData.startDate)
+				.setRequired(true);
+
+			modal.addComponents(
+				new ActionRowBuilder().addComponents(titleInput),
+				new ActionRowBuilder().addComponents(descriptionInput),
+				new ActionRowBuilder().addComponents(startTimeInput),
+				new ActionRowBuilder().addComponents(endTimeInput),
+				new ActionRowBuilder().addComponents(startDateInput)
+			);
+
+			await interaction.showModal(modal);
+		}
+	}
+});
+
+// Handle modal submissions
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isModalSubmit()) return;
+
+	if (interaction.customId.startsWith('event_edit_modal_')) {
+		const messageId = interaction.customId.replace('event_edit_modal_', '');
+		const eventKey = `event_${interaction.guild.id}_${messageId}`;
+		
+		if (!client.eventData || !client.eventData.has(eventKey)) {
+			return await interaction.reply({ content: 'Event data not found!', ephemeral: true });
+		}
+
+		await interaction.deferReply({ ephemeral: true });
+
+		const eventData = client.eventData.get(eventKey);
+		
+		// Get values from modal
+		const title = interaction.fields.getTextInputValue('title');
+		const description = interaction.fields.getTextInputValue('description');
+		const startTime = interaction.fields.getTextInputValue('startTime');
+		const endTime = interaction.fields.getTextInputValue('endTime');
+		const startDate = interaction.fields.getTextInputValue('startDate');
+
+		// Validate time format
+		const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+		if (!timeRegex.test(startTime)) {
+			return await interaction.editReply({ content: 'Invalid start time format! Use HH:MM (e.g., 20:00)' });
+		}
+		if (!timeRegex.test(endTime)) {
+			return await interaction.editReply({ content: 'Invalid end time format! Use HH:MM (e.g., 22:00)' });
+		}
+
+		// Validate date format
+		const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+		if (!dateRegex.test(startDate)) {
+			return await interaction.editReply({ content: 'Invalid start date format! Use DD/MM/YYYY (e.g., 13/10/2025)' });
+		}
+
+		// Update event data
+		eventData.title = title;
+		eventData.description = description;
+		eventData.startTime = startTime;
+		eventData.endTime = endTime;
+		eventData.startDate = startDate;
+
+		try {
+			// Fetch the message and update it
+			const channel = await interaction.guild.channels.fetch(eventData.channelId);
+			const message = await channel.messages.fetch(messageId);
+			
+			await updateEventEmbed(message, eventData);
+			
+			await interaction.editReply({ content: 'Event updated successfully!' });
+		} catch (error) {
+			console.error('Error updating event:', error);
+			await interaction.editReply({ content: 'Error updating event!' });
 		}
 	}
 });

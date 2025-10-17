@@ -44,6 +44,10 @@ module.exports = {
 		.addStringOption(option =>
 			option.setName('color')
 				.setDescription('Embed color (hex code, e.g., #ff0000)')
+				.setRequired(false))
+		.addRoleOption(option =>
+			option.setName('tag-role')
+				.setDescription('Role to tag/notify about this event')
 				.setRequired(false)),
 	async execute(interaction) {
 		// Defer the reply immediately
@@ -58,6 +62,7 @@ module.exports = {
 		const notificationTime = interaction.options.getInteger('notification-time');
 		const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 		const color = interaction.options.getString('color') || '#0099ff';
+		const tagRole = interaction.options.getRole('tag-role');
 
 		// Validate time format (HH:MM)
 		const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -146,8 +151,10 @@ module.exports = {
 			);
 
 		try {
-			// Send the event embed
+			// Send the event embed with role tag if specified
+			const messageContent = tagRole ? `${tagRole}` : null;
 			const message = await targetChannel.send({ 
+				content: messageContent,
 				embeds: [eventEmbed], 
 				components: [adminRow] 
 			});
@@ -175,6 +182,7 @@ module.exports = {
 				endDate: endDate,
 				notificationTime: notificationTime,
 				color: color,
+				tagRole: tagRole ? tagRole.id : null,
 				accepted: [],
 				declined: [],
 				tentative: []
