@@ -1,4 +1,4 @@
-# EmbedRoleBot
+# DiscordRoleListDisplayer
 
 A Discord bot that manages role embeds with automatic updates when users are given or removed from roles.
 
